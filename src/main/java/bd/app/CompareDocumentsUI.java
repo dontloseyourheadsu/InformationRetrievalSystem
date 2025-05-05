@@ -2,33 +2,36 @@ package bd.app;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.*;
-import java.sql.Connection;
+import java.sql.*;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public class CompareDocumentsUI extends JFrame {
-    private JTextField doc1Field, doc2Field;
+    private JComboBox<String> doc1Box, doc2Box;
     private JComboBox<String> metricBox;
     private JTextArea resultArea;
     private Connection conn;
+    private Map<String, Integer> titleToId = new LinkedHashMap<>();
 
     public CompareDocumentsUI(Connection conn) {
         super("Compare Documents");
         this.conn = conn;
 
-        setSize(400, 300);
+        setSize(500, 300);
         setLayout(new BorderLayout());
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
-        // Top input panel
-        JPanel inputPanel = new JPanel();
-        inputPanel.add(new JLabel("Doc ID 1:"));
-        doc1Field = new JTextField(5);
-        inputPanel.add(doc1Field);
-        inputPanel.add(new JLabel("Doc ID 2:"));
-        doc2Field = new JTextField(5);
-        inputPanel.add(doc2Field);
+        loadDocumentTitles();
 
-        metricBox = new JComboBox<>(new String[] { "cosine", "euclidean" });
+        JPanel inputPanel = new JPanel();
+        doc1Box = new JComboBox<>(titleToId.keySet().toArray(new String[0]));
+        doc2Box = new JComboBox<>(titleToId.keySet().toArray(new String[0]));
+        metricBox = new JComboBox<>(new String[]{"cosine", "euclidean"});
+
+        inputPanel.add(new JLabel("Document 1:"));
+        inputPanel.add(doc1Box);
+        inputPanel.add(new JLabel("Document 2:"));
+        inputPanel.add(doc2Box);
         inputPanel.add(new JLabel("Metric:"));
         inputPanel.add(metricBox);
 
@@ -37,20 +40,36 @@ public class CompareDocumentsUI extends JFrame {
 
         add(inputPanel, BorderLayout.NORTH);
 
-        resultArea = new JTextArea(10, 30);
+        resultArea = new JTextArea(10, 40);
         resultArea.setEditable(false);
         add(new JScrollPane(resultArea), BorderLayout.CENTER);
 
         compareButton.addActionListener(e -> handleCompare());
     }
 
+    private void loadDocumentTitles() {
+        try (Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery("SELECT id, title FROM Text ORDER BY title")) {
+            while (rs.next()) {
+                int id = rs.getInt("id");
+                String title = rs.getString("title");
+                titleToId.put(title, id);
+            }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Failed to load documents: " + e.getMessage());
+        }
+    }
+
     private void handleCompare() {
         try {
-            int doc1 = Integer.parseInt(doc1Field.getText().trim());
-            int doc2 = Integer.parseInt(doc2Field.getText().trim());
+            String title1 = (String) doc1Box.getSelectedItem();
+            String title2 = (String) doc2Box.getSelectedItem();
+            int id1 = titleToId.get(title1);
+            int id2 = titleToId.get(title2);
             String metric = (String) metricBox.getSelectedItem();
-            double score = SimilarityEngine.compareDocuments(doc1, doc2, metric, conn);
-            resultArea.setText("Similarity Score: " + String.format("%.4f", score));
+
+            double score = SimilarityEngine.compareDocuments(id1, id2, metric, conn);
+            resultArea.setText("Similarity Score (" + metric + "): " + String.format("%.4f", score));
         } catch (Exception ex) {
             resultArea.setText("Error: " + ex.getMessage());
         }
