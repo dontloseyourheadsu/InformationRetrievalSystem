@@ -17,7 +17,7 @@ public class CompareDocumentsUI extends JFrame {
         super("Compare Documents");
         this.conn = conn;
 
-        setSize(500, 300);
+        setSize(950, 300);
         setLayout(new BorderLayout());
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 

@@ -115,7 +115,12 @@ public class SimilarityEngine {
         ps.close();
 
         // Clean up query
-        conn.createStatement().executeUpdate("DELETE FROM Document WHERE id = " + queryId);
+        // Clean up query from DB
+        Statement cleanup = conn.createStatement();
+        cleanup.executeUpdate("DELETE FROM HAS   WHERE id = " + queryId);
+        cleanup.executeUpdate("DELETE FROM Query WHERE id = " + queryId);
+        cleanup.executeUpdate("DELETE FROM Document WHERE id = " + queryId);
+        cleanup.close();
 
         return results;
     }
